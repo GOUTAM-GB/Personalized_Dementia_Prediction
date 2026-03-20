@@ -372,7 +372,7 @@
                             <div class="acc-bar-fill" style="width: {{ data.accuracy }}%;"></div>
                         </div>
                     </div>
-                    <img src="/media/{{ data.image }}" alt="{{ model }} confusion matrix">
+                    <img src="{% static data.image %}" alt="{{ model }} confusion matrix">
                 </div>
             </div>
             {% endfor %}
@@ -391,7 +391,7 @@
                     </div>
                 </div>
                 <div class="heatmap-card-body">
-                    <img src="/media/{{ heatmap_img }}" alt="Correlation Heatmap">
+                    <img src="{% static data.image %}" alt="Correlation Heatmap">
                 </div>
             </div>
         </div>

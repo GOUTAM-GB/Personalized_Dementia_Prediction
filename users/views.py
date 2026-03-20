@@ -1,4 +1,5 @@
 from django.shortcuts import render
+from django.http import HttpResponse
 from django.contrib import messages
 from .forms import UserRegistrationForm
 from .models import UserRegistrationModel
@@ -100,7 +101,7 @@ def UserHome(request):
     return render(request, 'users/UserHomePage.html', {})
 
 def DatasetView(request):
-    path = os.path.join(settings.MEDIA_ROOT, 'dddst.csv') 
+    path = os.path.join(BASE_DIR, 'ml_model', 'test_data.csv')
     df = pd.read_csv(path)
     df = df.drop(columns=['Subject ID', 'MRI ID', 'Hand'], errors='ignore')   # ← add this line
     df_html = df.to_html(classes='table table-striped', index=False)
@@ -261,25 +262,13 @@ from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
 
 def Training(request):
-    context = {}
+    try:
+        context = {}
 
-    if request.method == 'POST' and request.FILES.get('file'):
-        file = request.FILES['file']
+        print("STEP 1: Loading dataset...")
+        df = pd.read_csv(os.path.join(BASE_DIR, 'ml_model', 'test_data.csv'))
 
-        if not file.name.endswith('.csv'):
-            context['message'] = "Only CSV files allowed!"
-            return render(request, 'users/train.html', context)
-
-        try:
-            df = pd.read_csv(file)
-        except:
-            context['message'] = "Invalid CSV file!"
-            return render(request, 'users/train.html', context)
-
-        # -----------------------------
-        # Preprocessing
-        # -----------------------------
-        df = df.drop_duplicates()
+        print("STEP 2: Preprocessing...")
 
         df['Group'] = df['Group'].replace({
             'Nondemented': 0,
@@ -290,7 +279,6 @@ def Training(request):
         df = df[df['Group'].isin([0, 1])]
         df = df.drop(columns=['Subject ID', 'MRI ID', 'Hand'], errors='ignore')
 
-        # Fill missing
         for col in df.select_dtypes(include=['float64', 'int64']).columns:
             df[col] = df[col].fillna(df[col].median())
 
@@ -299,97 +287,52 @@ def Training(request):
 
         df = pd.get_dummies(df, drop_first=True)
 
-        
-        
-        corr = df.corr()['Group'].abs()
-        low_corr_features = corr[(corr < 0.05) & (corr.index != 'Group')].index   # threshold
-        df = df.drop(columns=low_corr_features, errors='ignore')
-        
         X = df.drop('Group', axis=1)
         y = df['Group']
-        print("Class distribution:\n", y.value_counts())
-        # Scaling
-        from sklearn.preprocessing import StandardScaler
-        scaler = StandardScaler()
-        X_scaled = scaler.fit_transform(X)
 
-        # Split
-        X_train, X_test, y_train, y_test = train_test_split(
-            X_scaled, y, test_size=0.2, random_state=42, stratify=y
-        )
+        print("STEP 3: Loading scaler + features...")
 
-        # -----------------------------
-        # MODELS
-        # -----------------------------
+        scaler = joblib.load(os.path.join(BASE_DIR, 'ml_model', 'scaler.pkl'))
+        feature_columns = joblib.load(os.path.join(BASE_DIR, 'ml_model', 'feature_columns.pkl'))
+
+        print("STEP 4: Aligning columns...")
+        X = X.reindex(columns=feature_columns, fill_value=0)
+
+        print("STEP 5: Scaling...")
+        X_scaled = scaler.transform(X)
+
+        print("STEP 6: Loading models...")
+
         models = {
-            "Logistic": LogisticRegression(max_iter=2000),
-            "SVM": SVC(kernel='rbf', C=10, gamma='scale'),
-            "Random Forest": RandomForestClassifier(n_estimators=300, random_state=42, max_depth = 10, min_samples_leaf=2, min_samples_split=5)
+            "Logistic": joblib.load(os.path.join(BASE_DIR, 'ml_model', 'logistic.pkl')),
+            "SVM": joblib.load(os.path.join(BASE_DIR, 'ml_model', 'svm.pkl')),
+            "Random Forest": joblib.load(os.path.join(BASE_DIR, 'ml_model', 'random_forest.pkl')),
         }
 
         results = {}
-        img_dir = os.path.join(BASE_DIR, 'media', 'images')
-        os.makedirs(img_dir, exist_ok=True)
+
+        print("STEP 7: Predicting...")
 
         for name, model in models.items():
-            
-            model.fit(X_train, y_train)
-            y_pred = model.predict(X_test)
-
-            acc = accuracy_score(y_test, y_pred)
-            cm = confusion_matrix(y_test, y_pred)
-            from sklearn.model_selection import cross_val_score
-            cv_score = cross_val_score(model, X_scaled, y, cv=5).mean()
-
-            if name == "Random Forest":
-                importances = model.feature_importances_
-                feature_names = X.columns
-
-                # Create DataFrame
-                feat_df = pd.DataFrame({
-                    "Feature": feature_names,
-                    "Importance": importances
-                }).sort_values(by="Importance", ascending=False)
-
-                print("Top Features:\n", feat_df.head(10))
-            
-            # Save confusion matrix image
-            img_path = f'images/{name.lower().replace(" ", "_")}_cm.png'
-
-            plt.figure(figsize=(5, 4))
-            sns.heatmap(cm, annot=True, fmt='d', cmap='Blues')
-            plt.title(f"{name} Confusion Matrix")
-            plt.savefig(os.path.join(BASE_DIR, 'media', img_path))
-            plt.close()
+            y_pred = model.predict(X_scaled)
+            acc = accuracy_score(y, y_pred)
 
             results[name] = {
                 "accuracy": round(acc * 100, 2),
-                "cv_accuracy": round(cv_score * 100, 2),   # NEW
-                "image": img_path
+                "image": f"images/{name.lower().replace(' ', '_')}_cm.png"
             }
 
-            # Save models separately
-            joblib.dump(model, os.path.join(BASE_DIR, 'ml_model', f"{name.lower().replace(' ', '_')}.pkl"))
-
-        # Save scaler & features
-        joblib.dump(scaler, os.path.join(BASE_DIR, 'ml_model', 'scaler.pkl'))
-        joblib.dump(X.columns.tolist(), os.path.join(BASE_DIR, 'ml_model', 'feature_columns.pkl'))
-
-        # -----------------------------
-        # Heatmap
-        # -----------------------------
-        plt.figure(figsize=(10, 8))
-        sns.heatmap(df.corr(), cmap='coolwarm')
-        plt.savefig(os.path.join(img_dir, 'heatmap.png'))
-        plt.close()
-
         context.update({
-            "message": "Training completed with multiple models!",
+            "message": "Model Performance",
             "results": results,
             "heatmap_img": "images/heatmap.png"
         })
 
-    return render(request, 'users/train.html', context)
+        return render(request, 'users/train.html', context)
+
+    except Exception as e:
+        print("ERROR:", str(e))
+        return HttpResponse(f"Error: {str(e)}")
 
 
 
@@ -404,46 +347,41 @@ def Prediction(request):
 
     if request.method == 'POST':
         try:
-            
-            # Get form values
-            visit = int(request.POST.get('visit'))
+            visit    = int(request.POST.get('visit'))
             mr_delay = int(request.POST.get('mr_delay'))
-            age = float(request.POST.get('age'))
-            educ = float(request.POST.get('educ'))
-            ses = float(request.POST.get('ses'))
-            gender = request.POST.get('gender')
+            age      = float(request.POST.get('age'))
+            educ     = float(request.POST.get('educ'))
+            ses      = float(request.POST.get('ses'))
+            mmse     = float(request.POST.get('mmse'))
+            cdr      = float(request.POST.get('cdr'))
+            etiv     = float(request.POST.get('etiv'))
+            nwbv     = float(request.POST.get('nwbv'))
+            asf      = float(request.POST.get('asf'))
+            gender   = request.POST.get('gender')
 
-            # Create input dictionary
             input_dict = {
-                'Visit': visit,
+                'Visit':    visit,
                 'MR Delay': mr_delay,
-                'Age': age,
-                'EDUC': educ,
-                'SES': ses
+                'Age':      age,
+                'EDUC':     educ,
+                'SES':      ses,
+                'MMSE':     mmse,
+                'CDR':      cdr,
+                'eTIV':     etiv,
+                'nWBV':     nwbv,
+                'ASF':      asf,
             }
 
-            # Handle gender encoding (same as training)
             if 'M/F_M' in feature_columns:
                 input_dict['M/F_M'] = 1 if gender == 'M' else 0
 
-            # Convert to DataFrame
             input_df = pd.DataFrame([input_dict])
-
-            # Align with training columns
             input_df = input_df.reindex(columns=feature_columns, fill_value=0)
-
-            # Scale input
             input_scaled = scaler.transform(input_df)
-
-            # Predict
             result = model.predict(input_scaled)[0]
 
-            prediction_map = {
-                0: "Nondemented",
-                1: "Demented"
-            }
-
-            prediction = prediction_map.get(result, "Unknown")
+            prediction_map = {0: "Nondemented", 1: "Demented", 2: "Converted"}
+            prediction = prediction_map.get(result, str(result))
 
         except Exception as e:
             prediction = f"Error: {str(e)}"

@@ -384,6 +384,60 @@
                         </div>
                     </div>
 
+                    <hr class="form-rule">
+
+                    <!-- Section: MRI Clinical Scores -->
+                    <span class="form-section-label">
+                        <i class="fas fa-brain"></i> MRI Clinical Scores
+                    </span>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="field-group">
+                                <label class="field-label">MMSE Score (0–30)</label>
+                                <div class="field-wrap">
+                                    <i class="fas fa-clipboard-check field-icon"></i>
+                                    <input type="number" step="0.1" name="mmse" placeholder="e.g. 27 (higher = better)" min="0" max="30" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="field-group">
+                                <label class="field-label">CDR (0, 0.5, 1, 2)</label>
+                                <div class="field-wrap">
+                                    <i class="fas fa-stethoscope field-icon"></i>
+                                    <input type="number" step="0.5" name="cdr" placeholder="0 = None, 0.5 = Mild" min="0" max="3" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="field-group">
+                                <label class="field-label">eTIV (mm³)</label>
+                                <div class="field-wrap">
+                                    <i class="fas fa-cube field-icon"></i>
+                                    <input type="number" name="etiv" placeholder="e.g. 1500" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="field-group">
+                                <label class="field-label">nWBV</label>
+                                <div class="field-wrap">
+                                    <i class="fas fa-percentage field-icon"></i>
+                                    <input type="number" step="0.001" name="nwbv" placeholder="e.g. 0.696" min="0" max="1" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="field-group">
+                                <label class="field-label">ASF</label>
+                                <div class="field-wrap">
+                                    <i class="fas fa-balance-scale field-icon"></i>
+                                    <input type="number" step="0.001" name="asf" placeholder="e.g. 0.883" required>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <button type="submit" class="btn-predict">
                         <i class="fas fa-brain"></i> Run Prediction
                     </button>

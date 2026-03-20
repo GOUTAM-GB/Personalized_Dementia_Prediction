@@ -318,23 +318,25 @@
             <p>Upload your dataset CSV file to train and compare all three ML models</p>
         </div>
 
-        <!-- Upload Card — form action/method/name unchanged -->
-        <div class="upload-card">
+        <!-- Auto-training info strip -->
+        <div class="upload-card" style="text-align:center;">
             <div class="upload-card-icon">
-                <i class="fas fa-cloud-upload-alt"></i>
+                <i class="fas fa-database"></i>
             </div>
-            <h4>Upload Dataset</h4>
-            <p>Upload the OASIS-2 CSV file to start training Random Forest, SVM and Logistic Regression models</p>
-
-            <form method="POST" enctype="multipart/form-data">
-                {% csrf_token %}
-                <div class="file-input-wrap">
-                    <input type="file" name="file" required accept=".csv">
-                </div>
-                <button type="submit" class="btn-train">
-                    <i class="fas fa-play-circle"></i> Start Training
-                </button>
-            </form>
+            <h4>Auto-Training from OASIS-2 Dataset</h4>
+            <p>Training runs automatically using the pre-loaded <strong>OASIS-2 longitudinal MRI dataset</strong>.<br>
+               Results for all three models are shown below.</p>
+            <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-top:8px;flex-wrap:wrap;">
+                <span style="display:inline-flex;align-items:center;gap:6px;background:#E0F7F5;border:1px solid #C5E8E4;color:#065A50;font-size:0.75rem;font-weight:600;padding:5px 14px;border-radius:20px;">
+                    <i class="fas fa-check-circle" style="color:#0A7C6E;"></i> Random Forest
+                </span>
+                <span style="display:inline-flex;align-items:center;gap:6px;background:#E0F7F5;border:1px solid #C5E8E4;color:#065A50;font-size:0.75rem;font-weight:600;padding:5px 14px;border-radius:20px;">
+                    <i class="fas fa-check-circle" style="color:#0A7C6E;"></i> SVM
+                </span>
+                <span style="display:inline-flex;align-items:center;gap:6px;background:#E0F7F5;border:1px solid #C5E8E4;color:#065A50;font-size:0.75rem;font-weight:600;padding:5px 14px;border-radius:20px;">
+                    <i class="fas fa-check-circle" style="color:#0A7C6E;"></i> Logistic Regression
+                </span>
+            </div>
         </div>
 
         <!-- Results section — only shown after training -->
